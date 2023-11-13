@@ -121,6 +121,12 @@ create_wallet() {
     --out-file payment.addr \
     --testnet-magic 4
 
+    # Build the stake address
+    cardano-cli conway stake-address build \
+    --stake-verification-key-file stake.vkey \
+    --testnet-magic 4 \
+    --out-file stake.addr
+
     echo "Congrats, this is your new wallet address:"
     cat payment.addr
     sleep 2
@@ -135,7 +141,7 @@ create_wallet() {
 
     cardano-cli conway stake-address registration-certificate \
     --stake-verification-key-file stake.vkey \
-    --key-reg-deposit-amt 2000000 \
+    --key-reg-deposit-amt $(cardano-cli conway query gov-state --testnet-magic 4 | jq -r .enactState.curPParams.keyDeposit) \
     --out-file registration.cert
 }
 
