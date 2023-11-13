@@ -73,6 +73,23 @@ time_passing_animation() {
     echo
 }
 
+
+exiting_animation() {
+    local animation="|/-\\"
+    local dots=""
+    for _ in {1..3}; do
+        for i in $(seq 0 3); do
+            echo -n -e "\r[ ${animation:$i:1} ] Exiting$dots"
+            sleep 0.5  # Adjust the sleep duration to control the animation speed
+            dots+=".."
+            if [ ${#dots} -gt 20 ]; then
+                dots=""
+            fi
+        done
+    done
+    echo
+}
+
 # Function to print a loading bar
 loading_bar() {
     local width=30
@@ -121,37 +138,61 @@ create_wallet() {
     --out-file payment.addr \
     --testnet-magic 4
 
+    # Build the stake address
+    cardano-cli conway stake-address build \
+    --stake-verification-key-file stake.vkey \
+    --testnet-magic 4 \
+    --out-file stake.addr
+
     echo "Congrats, this is your new wallet address:"
     cat payment.addr
     sleep 2
-    echo "We will have to fund this address with test ADA (or tADA)"
+    echo -e "\nWe will have to fund this address with test ADA (or tADA)"
     echo "You will have to do this step yourself, but don't worry - it's super easy!"
     echo "Copy your address"
     cat payment.addr
         sleep 2
 
-    echo "Go to https://sancho.network/faucet to get some tADA, paste your address in the input field and I will wait here for you"
+    echo -e "\nGo to https://sancho.network/faucet to get some tADA, paste your address in the input field and I will wait here for you"
     echo_clickable_link "https://sancho.network/faucet" "SanchoNet Faucet"
 
     cardano-cli conway stake-address registration-certificate \
     --stake-verification-key-file stake.vkey \
-    --key-reg-deposit-amt 2000000 \
+    --key-reg-deposit-amt $(cardano-cli conway query gov-state --testnet-magic 4 | jq -r .enactState.curPParams.keyDeposit) \
     --out-file registration.cert
 }
 
 # Function to register your stake-address certificate
 register_stake_certificate() {
     local utxo_key
-
+    local faucet_prompt
+    
     # Check if utxo is null, repeat function if it is
     while true; do
         utxo_key=$(cardano-cli query utxo --address "$(cat payment.addr)" --testnet-magic 4 --out-file /dev/stdout | jq -r 'keys[0]')
         if [ "$utxo_key" != "null" ]; then
             break  # Continue with the function
         else
-            echo "Seems like ADA has not arrived yet. Trying again..."
-            time_passing_animation
-            sleep 5  # Add a delay before repeating the function
+            echo "Seems like ADA has not arrived yet. Trying again?"
+            read -p "Choose an option (yes/no): " faucet_prompt
+            case $faucet_prompt in      
+              yes)
+                    #repeat function
+                    time_passing_animation
+                    sleep 5  # Add a delay before repeating the function
+                    ;;
+               no)  
+                    # Exit the script to come back later
+                    echo "We will continue when you are ready, see you next time."
+                    exiting_animation
+                    sleep 5 # Add a delay before leaving so they can ready it.
+                    exit
+                    ;;
+                *)
+                    echo "Invalid option."
+                    sleep 1 # Add a small delay to allow reading of "Invalid option" before restarting the function
+                    ;;
+            esac        
         fi
     done
 
