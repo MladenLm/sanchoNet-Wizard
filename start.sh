@@ -73,6 +73,23 @@ time_passing_animation() {
     echo
 }
 
+
+exiting_animation() {
+    local animation="|/-\\"
+    local dots=""
+    for _ in {1..3}; do
+        for i in $(seq 0 3); do
+            echo -n -e "\r[ ${animation:$i:1} ] Exiting$dots"
+            sleep 0.5  # Adjust the sleep duration to control the animation speed
+            dots+=".."
+            if [ ${#dots} -gt 20 ]; then
+                dots=""
+            fi
+        done
+    done
+    echo
+}
+
 # Function to print a loading bar
 loading_bar() {
     local width=30
@@ -148,16 +165,34 @@ create_wallet() {
 # Function to register your stake-address certificate
 register_stake_certificate() {
     local utxo_key
-
+    local faucet_prompt
+    
     # Check if utxo is null, repeat function if it is
     while true; do
         utxo_key=$(cardano-cli query utxo --address "$(cat payment.addr)" --testnet-magic 4 --out-file /dev/stdout | jq -r 'keys[0]')
         if [ "$utxo_key" != "null" ]; then
             break  # Continue with the function
         else
-            echo "Seems like ADA has not arrived yet. Trying again..."
-            time_passing_animation
-            sleep 5  # Add a delay before repeating the function
+            echo "Seems like ADA has not arrived yet. Trying again?"
+            read -p "Choose an option (yes/no): " faucet_prompt
+            case $faucet_prompt in      
+              yes)
+                    #repeat function
+                    time_passing_animation
+                    sleep 5  # Add a delay before repeating the function
+                    ;;
+               no)  
+                    # Exit the script to come back later
+                    echo "We will continue when you are ready, see you next time."
+                    exiting_animation
+                    sleep 5 # Add a delay before leaving so they can ready it.
+                    exit
+                    ;;
+                *)
+                    echo "Invalid option."
+                    sleep 1 # Add a small delay to allow reading of "Invalid option" before restarting the function
+                    ;;
+            esac        
         fi
     done
 
