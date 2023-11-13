@@ -147,13 +147,13 @@ create_wallet() {
     echo "Congrats, this is your new wallet address:"
     cat payment.addr
     sleep 2
-    echo "We will have to fund this address with test ADA (or tADA)"
+    echo -e "\nWe will have to fund this address with test ADA (or tADA)"
     echo "You will have to do this step yourself, but don't worry - it's super easy!"
     echo "Copy your address"
     cat payment.addr
         sleep 2
 
-    echo "Go to https://sancho.network/faucet to get some tADA, paste your address in the input field and I will wait here for you"
+    echo -e "\nGo to https://sancho.network/faucet to get some tADA, paste your address in the input field and I will wait here for you"
     echo_clickable_link "https://sancho.network/faucet" "SanchoNet Faucet"
 
     cardano-cli conway stake-address registration-certificate \
