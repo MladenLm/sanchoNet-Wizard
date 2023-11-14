@@ -227,6 +227,16 @@ register_drep() {
     --out-file drep.id
 
     cardano-cli conway governance drep registration-certificate \
+    --drep-verification-key-file drep.vkey \
+    --key-reg-deposit-amt 0 \
+    --out-file drep-register.cert
+
+    cardano-cli conway governance drep registration-certificate \
+    --drep-verification-key "$(cat drep.vkey | jq -r .cborHex | cut -c 5-)" \
+    --key-reg-deposit-amt 0 \
+    --out-file drep-register.cert
+
+    cardano-cli conway governance drep registration-certificate \
     --drep-key-hash $(cat drep.id) \
     --key-reg-deposit-amt 0 \
     --out-file drep-register.cert
@@ -325,14 +335,8 @@ create_governance_actions() {
     echo "b) Update the Constitution"
     echo "c) Motion of No Confidence"
     echo "d) Treasury Withdrawal"
-    echo "e) Check Constitution"
-    echo "f) Check individual DRep state"
-    echo "g) Check DRep stake distribution"
-    echo "h) Check comittee state"
-    echo "i) Check active comittee members"
-    echo "j) Check retired comittee memebers"
-    echo "k) Info"
-    read -p "Choose an option (a/b/c/d/e/f/g/h/i/k): " governance_option
+    echo "e) Info"
+    read -p "Choose an option (a/b/c/d/e): " governance_option
 
     case $governance_option in
         a)
@@ -352,44 +356,8 @@ create_governance_actions() {
             echo "You have chosen a treasury withdrawal."
             ;;
         e)
-            # Add code for checking constitution
-            echo "You haave chosen to check constitution"
-            ;;
-        f)
-            # Add code for querying individual DRep state
-            echo "You have chosen to check for individual DRep state"
-            ;;
-        g)
-            # Add code for querying DRep stake distribution
-            echo "You have chosen check DRep stake distribution"
-            ;;
-        h)
-            # Add code for querying committee state
-            echo "You have chosen to check state of committee"
-            ;;
-        i)
-            # Add code for checking active committee members
-            echo "You have chosen to check active comittee members"
-            ;;
-        j)
-            # Add code for checking retired committee members
-            echo "You have chosen to check retired committee members"
-            ;;
-        k)
             # Add code for info
             echo "You have chosen to get info."
-            ;;
-        l)
-            # Add code for showing goveernance action which expire in this epoch
-            echo "You have chosen to show governance actions that will expire at the end of the current epoch"
-            ;;   
-        m)
-            # Add code for showing governance actions which were proposed in this epoch
-            echo "You have chosen to show governance actions that were proposed in the current epoch"
-            ;;   
-        n)
-            # Add code for showing governance actions by the number of DRep votes
-            echo "You have chosen to show governance actions by the number of DRep votes"
             ;;
         *)
             echo "Invalid option. Please choose a valid option (a/b/c/d/e)."
