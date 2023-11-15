@@ -388,6 +388,233 @@ vote_on_actions() {
     esac
 }
 
+# Function to get information
+get_info() {
+    echo "Here you can find different info about DReps, Governance Actions, etc"
+    sleep 2
+    echo "1) Check constitution"
+    echo "2) Check state of all DReps"
+    echo "3) Check state of individual DRep"
+    echo "4) Check voting power of DReps"
+    echo "5) Check state of the whole committee"
+    echo "6) Check state of individual committee memeber"
+    echo "7) List expired committee members"
+    echo "8) List active committee members"
+    echo "9) List governance actions expiring at the end of the current epoch"
+    echo "10) List governance actions that were proposed in the current epoch"
+    echo "11) Show governance actions sorted by the number of DRep votes"
+    echo "12) Show governance actions sorted by the number of SPO votes"
+    echo "13) Show governance actions sorted by the number of CC votes"
+    echo "14) List actions for which a DRep key has voted"
+    echo "15) List actions where a DRep has not voted yet"
+    echo "16) Show the total number of 'yes', 'no', and 'abstain' votes for a given governance action ID"
+    echo "17) Show the active treasury withdrawal governance actions and their current vote count"
+    echo "18) Show the active 'update committee' governance actions and their current vote count"
+    read -p "Choose an option from 1 to 18: " info_option
+
+    case $info_option in
+        1)
+            # Code for checking constitution
+            echo "You asked to see the constitution"
+            cardano-cli conway query constitution --testnet-magic 4
+            ;;
+        2)
+            # Code for checking state of all DReps
+            echo "Here is information about the state of all DReps"
+            cardano-cli conway query drep-state --testnet-magic 4
+            ;;
+        3)
+            # Code for checking state of individual DRep
+            read -p "Enter ID od the DRep you want to check: " drep_id
+            echo "You have chosen to check DRep with ID: $drep_id."
+            cardano-cli conway query drep-state --drep-key-hash $drep_id
+            ;;
+        4) 
+            # Code for checking voting power of DReps
+            echo "You have choosen to check voting power of DReps"
+            cardano-cli conway query drep-stake-distribution --testnet-magic 4
+            ;;
+        5) 
+            # Code for checking state of the whole committee
+            cardano-cli conway query committee-state --testnet-magic 4
+            ;;
+        6) 
+            # Code for checking state of an individual committee key hash
+            read -p "Enter the hash od the Committee Member you want to check: " CC_hash
+            echo "You have chosen to check DRep with ID: $CC_hash."
+            cardano-cli conway query committee-state \
+            --cold-verification-key-hash $CC_hash \
+            --testnet-magic 4
+            ;;
+        7) 
+            # Code for listing expired committee members
+            echo "You choose to list expired committee members"
+            cardano-cli conway query committee-state --expired --testnet-magic 4
+            ;;
+        8) 
+            # Code for listing active committee members
+            echo "You choose to list active committee members"
+            cardano-cli conway query committee-state --active --testnet-magic 4
+            ;;
+        9) 
+            # Code for lising governance actions expiring at the end of the current epoch
+            echo "here is a list of all governance actions expiring at the end of current epoch"
+            # Would be nice to add current epoch here too
+            current_epoch=$(cardano-cli query tip --testnet-magic 4 | jq .epoch)
+            echo "current epoch is:"
+            cat $current_epoch
+            cardano-cli conway query gov-state --testnet-magic 4 \
+            | jq --argjson epoch "$current_epoch" '.proposals.psGovActionStates
+            | to_entries[]
+            | select(.value.expiresAfter == $epoch)'
+            ;;
+        10) 
+            # Code for listing governance actions that were proposed in the current epoch
+            echo "Here is a list of all governance actions that were proposed in the current epoch"
+            current_epoch=$(cardano-cli query tip --testnet-magic 4 | jq .epoch)
+            echo "BTW current epoch is:"
+            cat $current_epoch
+            cardano-cli conway query gov-state --testnet-magic 4 \
+            | jq -r --argjson epoch "$current_epoch" '.proposals.psGovActionStates
+            | to_entries[]
+            | select(.value.proposedIn == $epoch)'
+            ;;
+        11) 
+            # Code for governance actions sorted by the number of DRep votes
+            echo "Here is a list of governance actions sorted by the number of DRep votes"
+            cardano-cli conway query gov-state --testnet-magic 4 | jq -r '
+            .proposals.psGovActionStates
+            | to_entries[]
+            | {govActionId: .key, type: .value.action.tag, drepVoteCount: (.value.dRepVotes | keys | length)}
+            ' | jq -s 'sort_by(.voteCount) | reverse[]'
+            ;;
+        12)
+            # Code for governance actions sorted by the number of SPO votes
+            echo "Here is a list of governance actions sorted by the number of SPO votes"
+            cardano-cli conway query gov-state --testnet-magic 4 | jq -r '
+            .proposals.psGovActionStates
+            | to_entries[]
+            | {govActionId: .key, type: .value.action.tag, spoVoteCount: (.value.stakePoolVotes | keys | length)}
+            ' | jq -s 'sort_by(.voteCount) | reverse[]'
+            ;;
+        13)
+            # Code for governance actions sorted by the number of CC votes
+            echo "Here is a list of governance actions sorted by the number of CC votes"
+            cardano-cli conway query gov-state --testnet-magic 4 | jq -r '
+            .proposals.psGovActionStates
+            | to_entries[]
+            | {govActionId: .key, ccVoteCount: (.value.committeeVotes | keys | length)}
+            ' | jq -s 'sort_by(.voteCount) | reverse[]'
+            ;;
+        14) 
+            # Code for listing actions for which a specific DRep key has voted
+            read -p "Please enter ID of the DRep you want to check: " drep_id
+            echo "You have chosen to check DRep with ID: $drep_id."
+            echo "Here is a list of all actions this DRep has voted for:"
+            cardano-cli conway query gov-state --testnet-magic 4 | jq -r --arg dRepKey "keyHash-$drep_id" '
+            .proposals.psGovActionStates
+            | to_entries[]
+            | select(.value.dRepVotes[$dRepKey] != null)
+            | {
+                govActionId: .key,
+                type: .value.action.tag,
+                dRepVote: .value.dRepVotes[$dRepKey],
+                expiresAfter: .value.expiresAfter,
+                committeeVotesCount: (.value.committeeVotes | length),
+                dRepVotesCount: (.value.dRepVotes | length),
+                stakePoolVotesCount: (.value.stakePoolVotes | length)
+                }
+            '
+            ;;
+        15) 
+            # Code for listing actions where a DRep has not voted yet
+            read -p "Please enter ID of the DRep you want to check: " drep_id
+            echo "You have chosen to check DRep with ID: $drep_id."
+            echo "Here is a list of all actions this DRep has not voted for yet:"
+            cardano-cli conway query gov-state --testnet-magic 4 | jq -r --arg dRepKey "keyHash-$drep_id" '
+            .proposals.psGovActionStates
+            | to_entries[]
+            | select(.value.dRepVotes[$dRepKey] == null)
+            | {
+                govActionId: .key,
+                type: .value.action.tag,
+                expiresAfter: .value.expiresAfter,
+                committeeVotesCount: (.value.committeeVotes | length),
+                dRepVotesCount: (.value.dRepVotes | length),
+                stakePoolVotesCount: (.value.stakePoolVotes | length)
+                }
+            '
+            ;;
+        16) 
+            # Code for showing the total number of 'yes', 'no', and 'abstain' votes for a given governance action ID
+            read -p "Please enter ID of governance action you want to check: " gov_id
+            echo "You have chosen to check governance action with ID: $gov_id."
+            echo "Here are total nubmer of votes for this governance action:"
+            cardano-cli conway query gov-state --testnet-magic 4 | jq -r --arg actionId "$gov_id" '
+            .proposals.psGovActionStates
+            | to_entries[]
+            | select(.key == $actionId)
+            | { govActionId: .key,
+                dRepVoteYesCount: (.value.dRepVotes | with_entries(select(.value == "VoteYes")) | length),
+                dRepVoteNoCount: (.value.dRepVotes | with_entries(select(.value == "VoteNo")) | length),
+                dRepAbstainCount: (.value.dRepVotes | with_entries(select(.value == "Abstain")) | length),
+                stakePoolVoteYesCount: (.value.stakePoolVotes | with_entries(select(.value == "VoteYes")) | length),
+                stakePoolVoteNoCount: (.value.stakePoolVotes | with_entries(select(.value == "VoteNo")) | length),
+                stakePoolAbstainCount: (.value.stakePoolVotes | with_entries(select(.value == "Abstain")) | length),
+                committeeVoteYesCount: (.value.committeeVotes | with_entries(select(.value == "VoteYes")) | length),
+                committeeVoteNoCount: (.value.committeeVotes | with_entries(select(.value == "VoteNo")) | length),
+                committeeAbstainCount: (.value.committeeVotes | with_entries(select(.value == "Abstain")) | length)
+                }
+            '
+            ;;
+        17) 
+            # Code for showing the active treasury withdrawal governance actions and their current vote count
+            echo "Here is the list of all active treasury withdrawal governance actions: "
+            current_epoch=$(cardano-cli query tip --testnet-magic 4 | jq .epoch)
+
+            cardano-cli conway query gov-state --testnet-magic 4 | jq -r --arg currentEpoch "$current_epoch" '
+            .proposals.psGovActionStates
+            | to_entries[]
+            | select(.value.expiresAfter > ($currentEpoch | tonumber) and .value.action.tag == "TreasuryWithdrawals")
+            | { govActionId: .key,
+                type: .value.action.tag,
+                expiresAfter: .value.expiresAfter,
+                dRepVoteYesCount: (.value.dRepVotes | with_entries(select(.value == "VoteYes")) | length),
+                dRepVoteNoCount: (.value.dRepVotes | with_entries(select(.value == "VoteNo")) | length),
+                dRepAbstainCount: (.value.dRepVotes | with_entries(select(.value == "Abstain")) | length),
+                committeeVoteYesCount: (.value.committeeVotes | with_entries(select(.value == "VoteYes")) | length),
+                committeeVoteNoCount: (.value.committeeVotes | with_entries(select(.value == "VoteNo")) | length),
+                committeeAbstainCount: (.value.committeeVotes | with_entries(select(.value == "Abstain")) | length)
+                }
+            ' | jq -s 'sort_by(.expiresAfter)'
+            ;;
+        18)
+            # Code for showing the active update committee governance actions and their current vote count
+            echo "Here is the list of all active update committee governance actions and their current vote count"
+            current_epoch=$(cardano-cli query tip --testnet-magic 4 | jq .epoch)
+
+            cardano-cli conway query gov-state --testnet-magic 4 | jq -r --arg currentEpoch "$current_epoch" '
+            .proposals.psGovActionStates
+            | to_entries[]
+            | select(.value.expiresAfter > ($currentEpoch | tonumber) and .value.action.tag == "UpdateCommittee")
+            | { govActionId: .key,
+                type: .value.action.tag,
+                expiresAfter: .value.expiresAfter,
+                dRepVoteYesCount: (.value.dRepVotes | with_entries(select(.value == "VoteYes")) | length),
+                dRepVoteNoCount: (.value.dRepVotes | with_entries(select(.value == "VoteNo")) | length),
+                dRepAbstainCount: (.value.dRepVotes | with_entries(select(.value == "Abstain")) | length),
+                stakePoolVoteYesCount: (.value.stakePoolVotes | with_entries(select(.value == "VoteYes")) | length),
+                stakePoolVoteNoCount: (.value.stakePoolVotes | with_entries(select(.value == "VoteNo")) | length),
+                stakePoolAbstainCount: (.value.stakePoolVotes | with_entries(select(.value == "Abstain")) | length)
+                }
+            ' | jq -s 'sort_by(.expiresAfter)'
+            ;;
+        *)
+            echo "Invalid option. Please choose a valid option between 1 to 18."
+            ;;
+    esac
+}
+
 # Start of the script
 
 print_blue "
@@ -474,6 +701,7 @@ while true; do
     echo "3) Create Governance Actions"
     echo "4) Find Governance ID of your proposal"
     echo "5) Vote on Actions"
+    echo "6) Informations"
     echo "0) Quit"
     read -p "Choose an option (0-5): " main_option
 
@@ -492,6 +720,9 @@ while true; do
             ;;
         5)
             vote_on_actions
+            ;;
+        6)  
+            get_info
             ;;
         0)
             echo "Thank you being part of SanchoNet and helping us with governance on Cardano! Have a wonderful day!"
