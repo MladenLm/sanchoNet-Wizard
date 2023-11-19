@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# ANSI color codes
+# ANSI color codes and formating
 RED='\033[0;31m'
 BLUE='\033[0;34m'
-NC='\033[0m'  # No color
-# ANSI escape codes for formatting
+YELLOW='\033[33m'
 BOLD='\033[1m'
 NORMAL='\033[0m'
-BLUE='\033[34m'
+UNDERLINE='\033[4m'
+RESET='\033[0m'
+NC='\033[0m'  # No color
 
 # Function to print text in a larger size
 print_large_text() {
@@ -20,12 +21,16 @@ echo_clickable_link() {
     local link_text="$2"
 
     echo -e "${BOLD}${UNDERLINE}${link_text}${RESET}"
-    echo "Click the link: ${url}"
+    echo "Click here -> ${url}"
 }
 
 # Function to print text in red
 print_red() {
     echo -e "${RED}$1${NC}"
+}
+
+print_yellow() {
+    echo -e "${YELLOW}$1${NC}"
 }
 
 # Function to print text in blue
@@ -54,6 +59,10 @@ delegate_certificate_transaction() {
             cardano-cli conway transaction submit \
             --testnet-magic 4 \
             --tx-file tx.signed
+}
+
+get_last_enacted_gov_action_ID() {
+    cardano-cli conway query gov-state --testnet-magic 4 | jq -r .enactState.prevGovActionIds
 }
 
 
@@ -355,6 +364,230 @@ create_governance_actions() {
     esac
 }
 
+# Function to add new CC memeber
+add_new_CC() {
+    govActDeposit="$(cardano-cli conway query gov-state --testnet-magic 4 | jq -r '.enactState.curPParams.govActionDeposit')"
+
+    # Asking the user for link of the Governance Action
+    read -p "Plese provide us with link of the Governance Action: " link
+
+    # Asking the user for the text of the Governance Action
+    read -p "Please provide us with the Governance Action: " governance_text
+    echo "$user_text" > text.txt
+
+    # Asking the user for the key hash of a new CC memeber
+    read -p "Plese provide us with a key hash of a new CC memeber: " CC_memeber
+
+    # Asking the user for an expiration epoch of the new CC member
+    read -p "Plese provide us with the expiration epoch of a new CC memeber: " expiration_memeber
+
+    # Asking the user for quorum
+    read -p "How many members of the committee needs to accept the proposal?" quorum
+
+    get_last_enacted_gov_action_ID
+
+    read -p "Is there a previous Governance Action? (yes/no): " user_choice
+
+    if [ "$user_choice" == "yes" ]; then
+        read -p "Please provide Governance Action Tx Id: " governance_action_tx_id
+        read -p "Please provide Governance Action Tx Index: " governance_action_index
+        command="cardano-cli conway governance action update-committee \
+            --testnet \
+            --governance-action-deposit ${govActDeposit} \
+            --stake-verification-key-file stake.vkey \
+            --proposal-anchor-url ${link} \
+            --proposal-anchor-metadata-file ${governance_text} \
+            --add-cc-cold-verification-key-has ${CC_memeber} \
+            --epoch ${expiration_memeber} \
+            --quorum ${quorum} \
+            --governance-action-tx-id ${governance_action_tx_id} \
+            --governance-action-index ${governacne_action_index} \
+            --out-file update-committee.action"
+    else
+        command="cardano-cli conway governance action update-committee \
+            --testnet \
+            --governance-action-deposit ${govActDeposit} \
+            --stake-verification-key-file stake.vkey \
+            --proposal-anchor-url ${link} \
+            --proposal-anchor-metadata-file ${governance_text} \
+            --remove-cc-cold-verification-key-hash ${CC_memeber} \
+            --quorum ${quorum} \
+            --out-file update-committee.action"
+    fi
+
+    # Execute the chosen command
+    eval "$command"
+
+    # Function to submit the action needs to be added
+}
+
+# Function to remove an existing CC member
+remove_CC_member() {
+    govActDeposit="$(cardano-cli conway query gov-state --testnet-magic 4 | jq -r '.enactState.curPParams.govActionDeposit')"
+
+    # Asking the user for link of the Governance Action
+    read -p "Plese provide us with link of the Governance Action: " link
+
+    # Asking the user for the text of the Governance Action
+    read -p "Please provide us with the Governance Action: " governance_text
+    echo "$user_text" > text.txt
+
+    # Asking the user for the key hash of a CC memeber that is to be removed
+    read -p "Plese provide us with a key hash of a CC member to be removed: " CC_memeber
+
+    # Asking the user for quorum
+    read -p "How many members of the committee needs to accept the proposal?" quorum
+
+    get_last_enacted_gov_action_ID
+
+    read -p "Is there a previous Governance Action? (yes/no): " user_choice
+
+    if [ "$user_choice" == "yes" ]; then
+        read -p "Please provide Governance Action Tx Id: " governance_action_tx_id
+        read -p "Please provide Governance Action Tx Index: " governance_action_index
+        command="cardano-cli conway governance action update-committee \
+            --testnet \
+            --governance-action-deposit ${govActDeposit} \
+            --stake-verification-key-file stake.vkey \
+            --proposal-anchor-url ${link} \
+            --proposal-anchor-metadata-file ${governance_text} \
+            --remove-cc-cold-verification-key-hash ${CC_memeber} \
+            --quorum ${quorum} \
+            --governance-action-tx-id ${governance_action_tx_id} \
+            --governance-action-index ${governacne_action_index} \
+            --out-file update-committee.action"
+    else
+        command="cardano-cli conway governance action update-committee \
+            --testnet \
+            --governance-action-deposit ${govActDeposit} \
+            --stake-verification-key-file stake.vkey \
+            --proposal-anchor-url ${link} \
+            --proposal-anchor-metadata-file ${governance_text} \
+            --remove-cc-cold-verification-key-hash ${CC_memeber} \
+            --quorum ${quorum} \
+            --out-file update-committee.action"
+    fi
+
+    # Execute the chosen command
+    eval "$command"
+
+    # Function to submit the action needs to be added
+}
+
+# Function to update committee to only change the quorum
+change_quorum() {
+    govActDeposit="$(cardano-cli conway query gov-state --testnet-magic 4 | jq -r '.enactState.curPParams.govActionDeposit')"
+
+    # Asking the user for link of the Governance Action
+    read -p "Plese provide us with link of the Governance Action: " link
+
+    # Asking the user for the text of the Governance Action
+    read -p "Please provide us with the Governance Action: " governance_text
+    echo "$user_text" > text.txt
+
+    # Asking the user for quorum
+    read -p "How many members of the committee needs to accept the proposal?" quorum
+
+    get_last_enacted_gov_action_ID
+
+    read -p "Is there a previous Governance Action? (yes/no): " user_choice
+
+    if [ "$user_choice" == "yes" ]; then
+        read -p "Please provide Governance Action Tx Id: " governance_action_tx_id
+        read -p "Please provide Governance Action Tx Index: " governance_action_index
+        command="cardano-cli conway governance action update-committee \
+            --testnet \
+            --governance-action-deposit ${govActDeposit} \
+            --stake-verification-key-file stake.vkey \
+            --proposal-anchor-url ${link} \
+            --proposal-anchor-metadata-file ${governance_text} \
+            --quorum ${quorum} \
+            --governance-action-tx-id ${governance_action_tx_id} \
+            --governance-action-index ${governacne_action_index} \
+            --out-file update-committee.action"
+    else
+        command="cardano-cli conway governance action update-committee \
+            --testnet \
+            --governance-action-deposit ${govActDeposit} \
+            --stake-verification-key-file stake.vkey \
+            --proposal-anchor-url ${link} \
+            --proposal-anchor-metadata-file ${governance_text} \
+            --quorum ${quorum} \
+            --out-file update-committee.action"
+    fi
+
+    # Execute the chosen command
+    eval "$command"
+
+    # Function to submit the action needs to be added
+}
+
+# Function to update the constitution
+update_constitution() {
+    echo "This is the the last enacted constitution"
+    cardano-cli conway query gov-state --testnet-magic 4 | jq .enactState.prevGovActionIds.pgaConstitution
+
+    read -p "Please enter the text of your new constitution: " constitution_text
+    echo "$user_text" > text.txt
+
+    # Run b2sum on the file and save the output to a variable
+    b2sum_output=$(b2sum -l 256 text.txt)
+    
+    # Print the b2sum output
+    echo "b2sum of the constution: ${b2sum_output}"
+
+    echo "Upload the constitution file to a URL so that everyone can read it"
+
+    read - "Please provide the link of the constitution: " constitution_link
+    wget ${constitution_link} -O constitution_link.txt
+
+    b2sum -l 256 constitution_link.txt
+    echo "b2sum of the constution you wrote here: ${b2sum_output}"
+    echo "If these two same numbers are the same, you have proven to have the same constituion"
+    echo "Others will be able to check with this number if you changed anything to your online document"
+    echo "If you have this number will not be the same as the one submitted to the SanchoNet"
+
+    govActDeposit="$(cardano-cli conway query gov-state --testnet-magic 4 | jq -r '.enactState.curPParams.govActionDeposit')"
+
+    # Asking the user for quorum
+    read -p "How many members of the committee needs to accept the proposal?" quorum
+
+    get_last_enacted_gov_action_ID
+
+    read -p "Is there a previous Governance Action? (yes/no): " user_choice
+
+    if [ "$user_choice" == "yes" ]; then
+        read -p "Please provide Governance Action Tx Id: " governance_action_tx_id
+        read -p "Please provide Governance Action Tx Index: " governance_action_index
+        command="cardano-cli conway governance action create-constitution \
+        --testnet \
+        --governance-action-deposit ${govActDeposit} \
+        --stake-verification-key-file stake.vkey \
+        --proposal-anchor-url ${constitution_link} \
+        --proposal-anchor-metadata-hash "${b2sum_output}" \
+        --constitution-anchor-url b2sum_output "${b2sum_output}" \ 
+        --constitution-anchor-metadata "$(cat constitution.txt)" \
+        --governance-action-tx-id ${governance_action_tx_id} \
+        --governance-action-index ${governance_action_index} \
+        --out-file constitution.action" # Not exactly sure what are correct inputs here - best to go over with Mike
+    else
+        command="cardano-cli conway governance action update-committee \
+            --testnet \
+            --governance-action-deposit "${govActDeposit}" \
+            --stake-verification-key-file stake.vkey \
+            --proposal-anchor-url "${constitution_link}" \
+            --proposal-anchor-metadata-file "${b2sum_output}" \
+            --quorum "${quorum}" \
+            --out-file update-committee.action"
+    fi
+
+    # Execute the chosen command
+    eval "$command"
+
+    # Function to submit the action needs to be added
+
+}
+
 # Function to find the governance ID of your proposal
 find_governance_id() {
     # Add code here to find the governance ID
@@ -617,7 +850,7 @@ get_info() {
 
 # Start of the script
 
-print_blue "
+print_yellow "
                                               SANCHONET WIZARD
                                         
                                         Welcome to world of governance 
@@ -703,7 +936,7 @@ while true; do
     echo "5) Vote on Actions"
     echo "6) Informations"
     echo "0) Quit"
-    read -p "Choose an option (0-5): " main_option
+    read -p "Choose an option (0-6): " main_option
 
     case $main_option in
         1)
