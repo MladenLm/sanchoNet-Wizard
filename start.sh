@@ -29,6 +29,7 @@ print_red() {
     echo -e "${RED}$1${NC}"
 }
 
+# Function to print text in yellow
 print_yellow() {
     echo -e "${YELLOW}$1${NC}"
 }
