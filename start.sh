@@ -365,7 +365,7 @@ create_governance_actions() {
     esac
 }
 
-# Function to add new CC memeber
+# Function to add new CC member
 add_new_CC() {
     govActDeposit="$(cardano-cli conway query gov-state --testnet-magic 4 | jq -r '.enactState.curPParams.govActionDeposit')"
 
@@ -376,11 +376,11 @@ add_new_CC() {
     read -p "Please provide us with the Governance Action: " governance_text
     echo "$user_text" > text.txt
 
-    # Asking the user for the key hash of a new CC memeber
-    read -p "Plese provide us with a key hash of a new CC memeber: " CC_memeber
+    # Asking the user for the key hash of a new CC member
+    read -p "Plese provide us with a key hash of a new CC memeber: " CC_member
 
     # Asking the user for an expiration epoch of the new CC member
-    read -p "Plese provide us with the expiration epoch of a new CC memeber: " expiration_memeber
+    read -p "Plese provide us with the expiration epoch of a new CC member: " expiration_member
 
     # Asking the user for quorum
     read -p "How many committee members will there be in total?" quorum_denominator
@@ -450,7 +450,7 @@ remove_CC_member() {
             --stake-verification-key-file stake.vkey \
             --proposal-anchor-url ${link} \
             --proposal-anchor-metadata-file ${governance_text} \
-            --remove-cc-cold-verification-key-hash ${CC_memeber} \
+            --remove-cc-cold-verification-key-hash ${CC_member} \
             --quorum ${quorum} \
             --governance-action-tx-id ${governance_action_tx_id} \
             --governance-action-index ${governacne_action_index} \
@@ -462,7 +462,7 @@ remove_CC_member() {
             --stake-verification-key-file stake.vkey \
             --proposal-anchor-url ${link} \
             --proposal-anchor-metadata-file ${governance_text} \
-            --remove-cc-cold-verification-key-hash ${CC_memeber} \
+            --remove-cc-cold-verification-key-hash ${CC_member} \
             --quorum ${quorum} \
             --out-file update-committee.action"
     fi
