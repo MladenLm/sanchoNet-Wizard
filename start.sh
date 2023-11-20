@@ -383,26 +383,24 @@ add_new_CC() {
     read -p "Plese provide us with the expiration epoch of a new CC memeber: " expiration_memeber
 
     # Asking the user for quorum
-    read -p "How many members of the committee needs to accept the proposal?" quorum
+    read -p "How many committee members will there be in total?" quorum_denominator
+    read -p "How many members of the committee needs to accept the proposal?" quorum_numerator
+    
+    CC_governance_action_tx_id=$(cardano-cli conway query gov-state --testnet-magic 4 | jq -r .enactState.prevGovActionIds.pgaCommittee.txId)
+    CC_governance_action_index=$(cardano-cli conway query gov-state --testnet-magic 4 | jq -r .enactState.prevGovActionIds.pgaCommittee.govActionIx)
 
-    get_last_enacted_gov_action_ID
-
-    read -p "Is there a previous Governance Action? (yes/no): " user_choice
-
-    if [ "$user_choice" == "yes" ]; then
-        read -p "Please provide Governance Action Tx Id: " governance_action_tx_id
-        read -p "Please provide Governance Action Tx Index: " governance_action_index
+    if [ "$CC_governance_action_tx_id" != "null" ]; then
         command="cardano-cli conway governance action update-committee \
             --testnet \
             --governance-action-deposit ${govActDeposit} \
             --stake-verification-key-file stake.vkey \
             --proposal-anchor-url ${link} \
             --proposal-anchor-metadata-file ${governance_text} \
-            --add-cc-cold-verification-key-has ${CC_memeber} \
-            --epoch ${expiration_memeber} \
-            --quorum ${quorum} \
-            --governance-action-tx-id ${governance_action_tx_id} \
-            --governance-action-index ${governacne_action_index} \
+            --add-cc-cold-verification-key-has ${CC_member} \
+            --epoch ${expiration_member} \
+            --quorum ${quorum_numerator}/${quorum_denominator} \
+            --governance-action-tx-id ${CC_governance_action_tx_id} \
+            --governance-action-index ${CC_governacne_action_index} \
             --out-file update-committee.action"
     else
         command="cardano-cli conway governance action update-committee \
@@ -411,8 +409,8 @@ add_new_CC() {
             --stake-verification-key-file stake.vkey \
             --proposal-anchor-url ${link} \
             --proposal-anchor-metadata-file ${governance_text} \
-            --remove-cc-cold-verification-key-hash ${CC_memeber} \
-            --quorum ${quorum} \
+            --remove-cc-cold-verification-key-hash ${CC_member} \
+            --quorum ${quorum_numerator}/${quorum_denominator} \
             --out-file update-committee.action"
     fi
 
